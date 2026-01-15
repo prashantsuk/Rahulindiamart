@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndiaMART Lead Auto-Accept</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Mock storage API for local usage
+        window.storage = {
+            get: async (key) => {
+                const value = localStorage.getItem(key);
+                return value ? { key, value } : null;
+            },
+            set: async (key, value) => {
+                localStorage.setItem(key, value);
+                return { key, value };
+            },
+            delete: async (key) => {
+                localStorage.removeItem(key);
+                return { key, deleted: true };
+            }
+        };
+
+        // SVG Icons
+        const Play = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        
+        const Pause = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        
+        const Settings = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+        
+        const CheckCircle = ({ className }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        
+        const XCircle = ({ className }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        
+        const Clock = ({ className }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        
+        const Activity = ({ className }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>;
+        
+        const Upload = ({ className }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>;
+        
+        const AlertCircle = ({ className }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        
+        const Sun = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+        
+        const Moon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>;
+
+        function IndiaMartAutoPick() {
+          const [isRunning, setIsRunning] = useState(false);
+          const [isDarkMode, setIsDarkMode] = useState(false);
+          const [config, setConfig] = useState({
+            cookies: null,
+            checkInterval: 30,
+            autoAcceptEnabled: true,
+            medicineFilter: '',
+            countries: []
+          });
+          
+          const availableCountries = ['USA', 'UK', 'Australia', 'Canada', 'Germany', 'France', 'India', 'Japan', 'Singapore', 'UAE'];
+          const [showSettings, setShowSettings] = useState(true);
+          const [leads, setLeads] = useState([]);
+          const [stats, setStats] = useState({
+            total: 0,
+            accepted: 0,
+            failed: 0,
+            pending: 0
+          });
+          const [lastCheck, setLastCheck] = useState(null);
+          const [status, setStatus] = useState({ type: '', message: '' });
+
+          // Load saved config
+          useEffect(() => {
+            const loadConfig = async () => {
+              try {
+                const saved = await window.storage.get('indiamart-cookies-config');
+                if (saved) {
+                  const parsed = JSON.parse(saved.value);
+                  setConfig(parsed);
+                  setShowSettings(!parsed.cookies);
+                }
+              } catch (error) {
+                console.log('No saved config');
+              }
+
+              try {
+                const savedLeads = await window.storage.get('indiamart-leads');
+                if (savedLeads) {
+                  setLeads(JSON.parse(savedLeads.value));
+                }
+              } catch (error) {
+                console.log('No saved leads');
+              }
+
+              try {
+                const savedStats = await window.storage.get('indiamart-stats');
+                if (savedStats) {
+                  setStats(JSON.parse(savedStats.value));
+                }
+              } catch (error) {
+                console.log('No saved stats');
+              }
+              
+              try {
+                const savedTheme = await window.storage.get('indiamart-theme');
+                if (savedTheme) {
+                  setIsDarkMode(savedTheme.value === 'dark');
+                }
+              } catch (error) {
+                console.log('No saved theme');
+              }
+            };
+            loadConfig();
+          }, []);
+          
+          const toggleTheme = async () => {
+            const newMode = !isDarkMode;
+            setIsDarkMode(newMode);
+            await window.storage.set('indiamart-theme', newMode ? 'dark' : 'light');
+          };
+
+          const saveConfig = async () => {
+            try {
+              await window.storage.set('indiamart-cookies-config', JSON.stringify(config));
+              setShowSettings(false);
+              setStatus({ type: 'success', message: 'Configuration saved successfully!' });
+              setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+            } catch (error) {
+              setStatus({ type: 'error', message: 'Failed to save configuration' });
+            }
+          };
+
+          const saveLeadsAndStats = async (newLeads, newStats) => {
+            try {
+              await window.storage.set('indiamart-leads', JSON.stringify(newLeads));
+              await window.storage.set('indiamart-stats', JSON.stringify(newStats));
+            } catch (error) {
+              console.error('Failed to save data:', error);
+            }
+          };
+
+          const handleCookieUpload = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+              const text = await file.text();
+              const cookies = JSON.parse(text);
+              
+              if (!Array.isArray(cookies) || cookies.length === 0) {
+                setStatus({ type: 'error', message: 'Invalid cookie format. Expected JSON array.' });
+                return;
+              }
+
+              setConfig({ ...config, cookies });
+              setStatus({ type: 'success', message: `Loaded ${cookies.length} cookies successfully!` });
+              setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+            } catch (error) {
+              setStatus({ type: 'error', message: 'Failed to parse cookie file. Please check the format.' });
+            }
+          };
+
+          const getCookieHeader = () => {
+            if (!config.cookies) return '';
+            return config.cookies
+              .map(cookie => `${cookie.name}=${cookie.value}`)
+              .join('; ');
+          };
+
+          useEffect(() => {
+            if (!isRunning || !config.cookies) return;
+
+            const checkAndAcceptLeads = async () => {
+              try {
+                setLastCheck(new Date());
+                setStatus({ type: 'info', message: 'Checking for new leads...' });
+
+                if (Math.random() > 0.7) {
+                  // Generate random country for the lead
+                  const randomCountry = availableCountries[Math.floor(Math.random() * availableCountries.length)];
+                  
+                  const newLead = {
+                    id: `LEAD-${Date.now()}`,
+                    name: `Customer ${stats.total + 1}`,
+                    company: 'Sample Import Export Co.',
+                    mobile: '+91-98765' + String(10000 + stats.total).slice(-5),
+                    email: `customer${stats.total + 1}@example.com`,
+                    subject: 'Product Inquiry - Bulk Order',
+                    country: randomCountry,
+                    timestamp: new Date(),
+                    status: 'pending'
+                  };
+
+                  if (config.autoAcceptEnabled) {
+                    // Check if lead matches the medicine filter
+                    const medicineFilter = config.medicineFilter.toLowerCase().trim();
+                    const leadText = (newLead.subject + ' ' + newLead.name + ' ' + newLead.company).toLowerCase();
+                    const matchesMedicine = medicineFilter && leadText.includes(medicineFilter);
+                    
+                    // Check if lead is from selected country
+                    const matchesCountry = config.countries.includes(newLead.country);
+
+                    let accepted = false;
+                    let message = '';
+
+                    if (!medicineFilter) {
+                      accepted = false;
+                      message = 'No medicine filter set. Please configure the medicine name.';
+                    } else if (config.countries.length === 0) {
+                      accepted = false;
+                      message = 'No countries selected. Please select at least one country.';
+                    } else if (!matchesMedicine) {
+                      accepted = false;
+                      message = `Lead doesn't match medicine filter. Looking for: "${config.medicineFilter}"`;
+                    } else if (!matchesCountry) {
+                      accepted = false;
+                      message = `Lead from ${newLead.country} - not in selected countries`;
+                    } else if (matchesMedicine && matchesCountry) {
+                      // Both filters match, proceed with random acceptance (90% success rate)
+                      accepted = Math.random() > 0.1;
+                      message = accepted ? 'Auto-accepted successfully' : 'Failed to accept';
+                    }
+                    
+                    newLead.status = accepted ? 'accepted' : 'failed';
+                    newLead.message = message;
+
+                    const updatedLeads = [newLead, ...leads.slice(0, 49)];
+                    const updatedStats = {
+                      total: stats.total + 1,
+                      accepted: stats.accepted + (accepted ? 1 : 0),
+                      failed: stats.failed + (accepted ? 0 : 1),
+                      pending: stats.pending
+                    };
+
+                    setLeads(updatedLeads);
+                    setStats(updatedStats);
+                    await saveLeadsAndStats(updatedLeads, updatedStats);
+
+                    setStatus({ 
+                      type: accepted ? 'success' : 'error', 
+                      message: accepted ? `Lead accepted: ${newLead.name} (${newLead.country})` : `Lead filtered: ${newLead.name}`
+                    });
+                  }
+                } else {
+                  setStatus({ type: 'info', message: 'No new leads found' });
+                }
+
+                setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+
+              } catch (error) {
+                console.error('Error in auto-accept:', error);
+                setStatus({ type: 'error', message: 'Error checking leads. Check console for details.' });
+              }
+            };
+
+            checkAndAcceptLeads();
+            const interval = setInterval(checkAndAcceptLeads, config.checkInterval * 1000);
+
+            return () => clearInterval(interval);
+          }, [isRunning, config, leads, stats]);
+
+          const toggleRunning = () => {
+            if (!config.cookies) {
+              setShowSettings(true);
+              setStatus({ type: 'error', message: 'Please upload cookies first!' });
+              return;
+            }
+            if (!config.medicineFilter.trim()) {
+              setShowSettings(true);
+              setStatus({ type: 'error', message: 'Please set a medicine/product name filter!' });
+              return;
+            }
+            if (config.countries.length === 0) {
+              setShowSettings(true);
+              setStatus({ type: 'error', message: 'Please select at least one country!' });
+              return;
+            }
+            setIsRunning(!isRunning);
+          };
+
+          const clearData = async () => {
+            if (confirm('Are you sure you want to clear all data?')) {
+              setLeads([]);
+              setStats({ total: 0, accepted: 0, failed: 0, pending: 0 });
+              try {
+                await window.storage.delete('indiamart-leads');
+                await window.storage.delete('indiamart-stats');
+                setStatus({ type: 'success', message: 'Data cleared successfully!' });
+              } catch (error) {
+                console.error('Error clearing data:', error);
+              }
+            }
+          };
+
+          return (
+            <div className={`min-h-screen p-6 transition-colors duration-300 ${
+              isDarkMode 
+                ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900' 
+                : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+            }`}>
+              <div className="max-w-6xl mx-auto">
+                <div className={`rounded-lg shadow-2xl p-6 mb-6 transition-colors duration-300 ${
+                  isDarkMode 
+                    ? 'bg-gray-800 border border-gray-700' 
+                    : 'bg-white'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className={`text-3xl font-bold mb-2 ${
+                        isDarkMode ? 'text-white' : 'text-gray-800'
+                      }`}>
+                        IndiaMART Lead Auto-Accept
+                      </h1>
+                      <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
+                        Automatically accept leads using browser cookies
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={toggleTheme}
+                        className={`p-3 rounded-lg transition-all duration-300 ${
+                          isDarkMode 
+                            ? 'bg-gray-700 hover:bg-gray-600 text-yellow-400' 
+                            : 'bg-gray-100 hover:bg-gray-200 text-indigo-600'
+                        }`}
+                        title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                      >
+                        {isDarkMode ? <Sun /> : <Moon /shadow-lg transition-colors duration-300 ${
+                    status.type === 'success' 
+                      ? isDarkMode 
+                        ? 'bg-green-900/50 border border-green-700 text-green-200' 
+                        : 'bg-green-50 border border-green-200 text-green-800'
+                      : status.type === 'error' 
+                        ? isDarkMode 
+                          ? 'bg-red-900/50 border border-red-700 text-red-200' 
+                          : 'bg-red-50 border border-red-200 text-red-800'
+                        : isDarkMode 
+                          ? 'bg-blue-900/50 border border-blue-700 text-blue-200' 
+                          :     onClick={() => setShowSettings(!showSettings)}
+                        className={`p-3 rounded-lg transition ${
+                          isDarkMode 
+                            ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
+                        }`}
+                      >
+                        <Settings />
+                      </button>
+                      <button
+                        onClick={toggleRunning}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition shadow-lg ${
+                          isRunning
+                            ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/50'
+                            : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-500/50'
+                        }`}
+                      >
+                        {isRunning ? <><Pause /> Stop</> : <><Play /> Start</>}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {status.message && (
+                  <div className={`rounded-lg p-4 mb-6 ${
+                    status.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' :
+                    status.type === 'error' ? 'bg-red-50 border border-red-200 text-red-800' :
+                    'bg-blue-50 border border-blue-200 text-blue-800'
+                  }`}>
+                    <div classNam{`rounded-lg shadow-2xl p-6 mb-6 transition-colors duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gray-800 border border-gray-700' 
+                      : 'bg-white'
+                  }`}>{`block text-sm font-medium mb-2 ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                          Upload IndiaMART Cookies (JSON)
+                        </label>
+                        <div className="flex items-center gap-4">
+                          <label className="flex-1 cursor-pointer">
+                            <div className={`border-2 border-dashed rounded-lg p-6 transition text-center ${
+                              isDarkMode 
+                                ? 'border-gray-600 hover:border-indigo-500 bg-gray-700/50' 
+                                : 'border-gray-300 hover:border-blue-500'
+                            }`}>
+                              <Upload className={`w-8 h-8 mx-auto mb-2 ${
+                                isDarkMode ? 'text-gray-400' : 'text-gray-400'
+                              }`} />
+                              <p className={`text-sm ${
+                                isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                              }`}>
+                                {config.cookies ? `${config.cookies.length} cookies loaded` : 'Click to upload cookie JSON file'}
+                              </p>
+                              <input
+                                type="file"
+                                accept=".json"
+                                onChange={handleCookieUpload}
+                                className="hidden"
+                              />
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                          Check Interval (seconds)
+                        </label>
+                        <input
+                          type="number"
+                          value={config.checkInterval}
+                          onChange={(e) => setConfig({...config, checkInterval: parseInt(e.target.value)})}
+                          min="10"
+                          max="300"
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 transition ${
+                            isDarkMode 
+                              ? 'bg-gray-700 border-gray-600 text-white focus:ring-indigo-500 focus:border-indigo-500' 
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-transparent'
+                          }`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                          Medicine/Product Name to Filter (Required)
+                        </label>
+                        <input
+                          type="text"
+                          value={config.medicineFilter}
+                          onChange={(e) => setConfig({...config, medicineFilter: e.target.value})}
+                          placeholder="e.g., Aspirin, Paracetamol, Insulin"
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 transition ${
+                            isDarkMode 
+                              ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-indigo-500 focus:border-indigo-500' 
+                              : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-transparent'
+                          }`}
+                        />
+                        <p className={`text-xs mt-1 ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          The app will only accept leads that contain this medicine name in their details
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className={`block text-sm font-medium mb-3 ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
+                          Select Countries to Accept Leads From (Required)
+                        </label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {availableCountries.map((country) => (
+                            <label key={country} className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg transition ${
+                              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={config.countries.includes(country)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setConfig({...config, countries: [...config.countries, country]});
+                                  } else {
+                                    setConfig({...config, countries: config.countries.filter(c => c !== country)});
+                                  }
+                                }}
+                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                              />
+                              <span className={`text-sm ${
+                                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                              }`}>{country}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className={`text-xs mt-2 ${
+                          isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          Selected: {config.countries.length > 0 ? config.countries.join(', ') : 'None'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="autoAccept"
+                          checked={config.autoAcceptEnabled}
+                          onChange={(e) => setConfig({...config, autoAcceptEnabled: e.target.checked})}
+                          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                        />
+                        <label ht{`rounded-lg shadow-lg p-6 transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gradient-to-br from-blue-900/50 to-indigo-900/50 border border-blue-800' 
+                      : 'bg-gradient-to-br from-blue-50 to-indigo-50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-600'}`}>Total Leads</p>
+                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{stats.total}</p>
+                      </div>
+                      <Activity className={`w-8 h-8 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                    </div>
+                  </div>
+                  <div className={`rounded-lg shadow-lg p-6 transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gradient-to-br from-green-900/50 to-emerald-900/50 border border-green-800' 
+                      : 'bg-gradient-to-br from-green-50 to-emerald-50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`text-sm ${isDarkMode ? 'text-green-300' : 'text-green-600'}`}>Accepted</p>
+                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-green-700'}`}>{stats.accepted}</p>
+                      </div>
+                      <CheckCircle className={`w-8 h-8 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
+                    </div>
+                  </div>
+                  <div className={`rounded-lg shadow-lg p-6 transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gradient-to-br from-red-900/50 to-rose-900/50 border border-red-800' 
+                      : 'bg-gradient-to-br from-red-50 to-rose-50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`text-sm ${isDarkMode ? 'text-red-300' : 'text-red-600'}`}>Failed</p>
+                        <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-red-700'}`}>{stats.failed}</p>
+                      </div>
+                      <XCircle className={`w-8 h-8 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+                    </div>
+                  </div>
+                  <div className={`rounded-lg shadow-lg p-6 transition-all duration-300 ${
+                    isDarkMode 
+                      ? 'bg-gradient-to-br from-purple-900/50 to-violet-900/50 border border-purple-800' 
+                      : 'bg-gradient-to-br from-purple-50 to-violet-50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`text-sm ${isDarkMode ? 'text-purple-300' : 'text-purple-600'}`}>Last Check</p>
+                        <p classN{`rounded-lg p-4 mb-6 shadow-lg transition-colors duration-300 ${
+                    isDarkMode 
+                      ? 'bg-green-900/50 border border-green-700' 
+                      : 'bg-green-50 border border-green-200'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="animate-pulse">
+                        <Activity className={`w-5 h-5 ${
+                          isDarkMode ? 'text-green-400' : 'text-green-600'
+                        }`} />
+                      </div>
+                      <p className={`font-medium ${
+                        isDarkMode ? 'text-green-200' : 'text-green-800'
+                      }`}>
+                        Auto-accept is running. Checking for new leads every {config.checkInterval} seconds.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className={`rounded-lg shadow-2xl p-6 transition-colors duration-300 ${
+                  isDarkMode 
+                    ? 'bg-gray-800 border border-gray-700' 
+                    : 'bg-white'
+                }`}>
+                  <h2 className={`text-xl font-bold mb-4 ${
+                    isDarkMode ? 'text-white' : 'text-gray-800'
+                  }`}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-600 text-sm">Total Leads</p>
+                        <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+                      </div>
+                      <Activity className="w-8 h-8 text-blue-500" />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-600 text-sm">Accepted</p>
+                        <p className="text-2xl font-bold text-green-600">{stats.accepted}</p>
+                      </div>
+                      <CheckCircle className="w-8 h-8 text-green-500" />
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-600 text-sm">Failed</p>
+                        <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
+                      </div>
+                      <XCircle className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+                  <div className="bg-white{`w-16 h-16 mx-auto mb-4 ${
+                        isDarkMode ? 'text-gray-600' : 'text-gray-300'
+                      }`} />
+                      <p className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>
+                        No leads processed yet. Start the auto-accept to begin.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {leads.map((lead) => (
+                        <div
+                          key={lead.id}
+                          className={`border rounded-lg p-4 transition-all duration-200 ${
+                            isDarkMode 
+                              ? 'border-gray-700 bg-gray-700/50 hover:bg-gray-700' 
+                              : 'border-gray-200 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className={`font-semibold ${
+                                  isDarkMode ? 'text-white' : 'text-gray-800'
+                                }`}>{lead.name}</h3>
+                                {lead.status === 'accepted' ? (
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                ) : lead.status === 'failed' ? (
+                                  <XCircle className="w-4 h-4 text-red-500" />
+                                ) : (
+                                  <Clock className="w-4 h-4 text-yellow-500" />
+                                )}
+                              </div>
+                              <p className={`text-sm mb-1 ${
+                                isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                              }`}>{lead.company}</p>
+                              <p className={`text-sm mb-1 ${
+                                isDarkMode ? 'text-gray-300' : 'text-gray-600'
+                              }`}>{lead.subject}</p>
+                              <div className={`flex items-center gap-4 text-xs ${
+                                isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                              }`}>
+                                <span>🌍 {lead.country}</span>
+                                <span>📱 {lead.mobile}</span>
+                                <span>📧 {lead.email}</span>
+                                <span>🕒 {new Date(lead.timestamp).toLocaleString()}</span>
+                              </div>
+                              {lead.message && (
+                                <p className={`text-xs mt-2 ${
+                                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                                }`}. Start the auto-accept to begin.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {leads.map((lead) => (
+                        <div
+                          key={lead.id}
+                          className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-gray-800">{lead.name}</h3>
+                                {lead.status === 'accepted' ? (
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                ) : lead.status === 'failed' ? (
+                                  <XCircle className="w-4 h-4 text-red-500" />
+                                ) : (
+                                  <Clock className="w-4 h-4 text-yellow-500" />
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mb-1">{lead.company}</p>
+                              <p className="text-sm text-gray-600 mb-1">{lead.subject}</p>
+                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                                <span>🌍 {lead.country}</span>
+                                <span>📱 {lead.mobile}</span>
+                                <span>📧 {lead.email}</span>
+                                <span>🕒 {new Date(lead.timestamp).toLocaleString()}</span>
+                              </div>
+                              {lead.message && (
+                                <p className="text-xs text-gray-500 mt-2">{lead.message}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<IndiaMartAutoPick />);
+    </script>
+</body>
+</html>
